@@ -11,6 +11,5 @@ font = "sans serif"
 mt-santai-running-club\
     app.py
     requirements.txt
-runtime.txt
     .streamlit\
         config.toml
