@@ -6,11 +6,10 @@ textColor = "#F0EBE1"
 font = "sans serif"
 ```
 
-保存。文件结构应该是这样：
+完成后文件结构应该长这样：
 ```
 mt-santai-running-club\
     app.py
     requirements.txt
-    runtime.txt
     .streamlit\
         config.toml
