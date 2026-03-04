@@ -32,16 +32,115 @@ except ImportError:
 from stravalib.client import Client
 
 # ═══════════════════════════════════════════
+#  LOGO
+# ═══════════════════════════════════════════
+import base64, pathlib
+
+def load_logo():
+    # Try multiple possible locations
+    for p in ["logo.png", "assets/logo.png",
+              pathlib.Path(__file__).parent / "logo.png"]:
+        logo_path = pathlib.Path(p)
+        if logo_path.exists():
+            return base64.b64encode(logo_path.read_bytes()).decode()
+    return ""
+
+LOGO_B64 = load_logo()
+
+# ═══════════════════════════════════════════
+#  LANGUAGE / 语言
+# ═══════════════════════════════════════════
+LANG = {
+    "en": {
+        "feed":        "🏠  Club Feed",
+        "analysis":    "📊  My Analysis",
+        "map":         "🗺️  Route Map",
+        "leaderboard": "🏆  Leaderboard",
+        "compare":     "👥  Compare",
+        "settings":    "⚙️  Settings",
+        "tagline":     "Run · Relax · Together",
+        "monthly":     "Monthly Trend",
+        "pace":        "Pace Analysis",
+        "hr":          "Heart Rate",
+        "elevation":   "Elevation",
+        "log":         "Full Log",
+        "total_runs":  "Total Runs",
+        "total_dist":  "Total Distance",
+        "longest":     "Longest Run",
+        "best_pace":   "Best Pace",
+        "avg_hr":      "Avg Heart Rate",
+        "total_elev":  "Total Elevation",
+        "refresh":     "🔄 Refresh",
+        "logout":      "🚪 Logout",
+        "this_month":  "This Month",
+        "monthly_dist":"Monthly Distance",
+        "total_runs_s":"Total Runs",
+        "cum_dist":    "Cumulative Dist",
+        "share":       "Share your run...",
+        "post":        "Post →",
+        "cheer":       "🔥 Cheer",
+        "recent":      "Your Recent Runs",
+        "no_data":     "No running data yet. Go for a run! 🏃",
+        "loading":     "⏳ Syncing your Strava data…",
+        "period":      "Period",
+        "metric":      "Rank By",
+        "this_month_s":"This Month",
+        "quarter":     "This Quarter",
+        "this_year":   "This Year",
+        "all":         "All Time",
+    },
+    "zh": {
+        "feed":        "🏠  动态广场",
+        "analysis":    "📊  我的分析",
+        "map":         "🗺️  路线地图",
+        "leaderboard": "🏆  排行榜",
+        "compare":     "👥  跑友对比",
+        "settings":    "⚙️  设置",
+        "tagline":     "跑山 · 放松 · 同行",
+        "monthly":     "月度趋势",
+        "pace":        "配速分析",
+        "hr":          "心率区间",
+        "elevation":   "爬升统计",
+        "log":         "完整记录",
+        "total_runs":  "总跑步次数",
+        "total_dist":  "总里程",
+        "longest":     "最长单跑",
+        "best_pace":   "最快配速",
+        "avg_hr":      "平均心率",
+        "total_elev":  "累计爬升",
+        "refresh":     "🔄 刷新",
+        "logout":      "🚪 退出",
+        "this_month":  "本月概览",
+        "monthly_dist":"月里程",
+        "total_runs_s":"跑步次数",
+        "cum_dist":    "累计里程",
+        "share":       "分享跑步感受…",
+        "post":        "发布 →",
+        "cheer":       "🔥 加油",
+        "recent":      "你的最近动态",
+        "no_data":     "暂无跑步记录，去跑一步吧 🏃",
+        "loading":     "⏳ 正在同步你的 Strava 数据…",
+        "period":      "时间段",
+        "metric":      "排名指标",
+        "this_month_s":"本月",
+        "quarter":     "本季度",
+        "this_year":   "本年",
+        "all":         "全部",
+    }
+}
+
+
+# ═══════════════════════════════════════════
 #  APP CONFIG
 # ═══════════════════════════════════════════
 CLUB_NAME    = "MT Santai Running Club"
-CLUB_EMOJI   = "🏔️"
+CLUB_EMOJI   = "🌿"
 ACCENT       = "#FF4D00"
 GOLD         = "#FFD600"
 
 st.set_page_config(
     page_title=f"{CLUB_NAME}",
-    page_icon=CLUB_EMOJI,
+    page_icon="🏃",  # Tab icon (emoji only)
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -49,20 +148,22 @@ st.set_page_config(
 # ═══════════════════════════════════════════
 #  CREDENTIALS  (from Streamlit Secrets)
 # ═══════════════════════════════════════════
-try:
-    CLIENT_ID     = st.secrets["STRAVA_CLIENT_ID"]
-    CLIENT_SECRET = st.secrets["STRAVA_CLIENT_SECRET"]
-except Exception:
-    CLIENT_ID     = ""
-    CLIENT_SECRET = ""
+import os
 
-# Auto-detect deployed URL vs localhost
-try:
-    REDIRECT_URI = st.secrets.get("REDIRECT_URI", "http://localhost:8501")
-except Exception:
-    REDIRECT_URI = "http://localhost:8501"
+def get_secret(key, default=""):
+    # Try st.secrets first, then environment variables
+    try:
+        val = st.secrets[key]
+        return str(val).strip()
+    except Exception:
+        pass
+    return os.environ.get(key, default)
 
-SCOPE = "read,activity:read_all,profile:read_all"
+CLIENT_ID     = "207566"
+CLIENT_SECRET = "35e71489638f64ec6ccddb02e6532a4fe8eb6187"
+REDIRECT_URI  = "http://localhost:8501"
+
+SCOPE = ["read", "activity:read_all", "profile:read_all"]
 
 # ═══════════════════════════════════════════
 #  CSS  — Trail / Forest Night aesthetic
@@ -358,34 +459,42 @@ def fetch_athlete(token: str) -> dict:
     }
 
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_activities(token: str, limit: int = 200) -> pd.DataFrame:
+def fetch_activities(token: str, limit: int = None) -> pd.DataFrame:
     c = Client(access_token=token)
     rows = []
-    run_types = {"Run", "TrailRun", "VirtualRun"}
-    for act in c.get_activities(limit=limit):
-        if str(act.type) not in run_types:
+    run_types = {"run", "trailrun", "virtualrun"}
+    for act in c.get_activities(limit=limit):  # None = fetch ALL
+        # stravalib may return type as "root='Run'" or just "Run"
+        act_type = str(act.type).lower().replace("root=", "").strip("'\"")
+        if act_type not in run_types:
             continue
         dist_km  = round(float(act.distance) / 1000, 2) if act.distance else 0
-        dur_sec  = float(act.moving_time.total_seconds()) if act.moving_time else 0
+        mt = act.moving_time
+        if mt is None: dur_sec = 0
+        elif hasattr(mt, "total_seconds"): dur_sec = float(mt.total_seconds())
+        elif hasattr(mt, "seconds"): dur_sec = float(mt.seconds)
+        else:
+            try: dur_sec = float(int(mt))
+            except: dur_sec = 0
         dur_min  = round(dur_sec / 60, 1)
         pace     = round(dur_sec / 60 / max(dist_km, 0.01), 2) if dist_km > 0 else 0
         rows.append({
             "id":           int(act.id),
             "name":         str(act.name),
-            "type":         str(act.type),
+            "type":         str(act.type).replace("root=", "").strip("'\""),
             "date":         act.start_date_local,
             "distance_km":  dist_km,
             "duration_min": dur_min,
             "pace_min_km":  pace,
             "avg_hr":       float(act.average_heartrate) if act.average_heartrate else 0,
-            "max_hr":       float(act.max_heartrate)     if act.max_heartrate else 0,
-            "elevation_m":  float(act.total_elevation_gain) if act.total_elevation_gain else 0,
-            "calories":     int(act.calories) if act.calories else 0,
-            "kudos":        int(act.kudos_count) if act.kudos_count else 0,
-            "suffer_score": int(act.suffer_score) if act.suffer_score else 0,
+            "max_hr":       float(getattr(act, "max_heartrate", 0) or 0),
+            "elevation_m":  float(getattr(act, "total_elevation_gain", 0) or 0),
+            "calories":     int(getattr(act, "calories", 0) or 0),
+            "kudos":        int(getattr(act, "kudos_count", 0) or 0),
+            "suffer_score": int(getattr(act, "suffer_score", 0) or 0),
             "polyline":     (act.map.summary_polyline if act.map else None) or "",
             "start_lat":    float(act.start_latlng.lat) if act.start_latlng else None,
-            "start_lng":    float(act.start_latlng.lng) if act.start_latlng else None,
+            "start_lng":    float(getattr(act.start_latlng, "lon", None) or getattr(act.start_latlng, "lng", None) or 0) if act.start_latlng else None,
         })
     df = pd.DataFrame(rows)
     if not df.empty:
@@ -426,7 +535,7 @@ def dark_layout(**extra):
         title_font_size=22,
         legend=dict(bgcolor="#080E08", bordercolor="#2A3D2A", borderwidth=1),
         xaxis=dict(gridcolor="#1E2A1E", zerolinecolor="#1E2A1E"),
-        yaxis=dict(gridcolor="#1E2A1E", zerolinecolor="#1E2A1E"),
+        # yaxis NOT set here — set per-chart to avoid conflicts
     )
     base.update(extra)
     return base
@@ -457,7 +566,7 @@ if st.session_state.token_data is None:
         st.markdown("<br>", unsafe_allow_html=True)
         st.markdown(f"""
 <div class="hero" style="text-align:center;">
-    <div style="font-size:3.5rem;margin-bottom:8px;">{CLUB_EMOJI}</div>
+    <img src="data:image/png;base64,{LOGO_B64}" style="width:80px;height:80px;object-fit:contain;margin-bottom:8px;border-radius:12px;" />
     <div class="hero-title">{CLUB_NAME}</div>
     <div class="hero-sub">跑山 · 放松 · 同行</div>
 </div>
@@ -518,68 +627,89 @@ athlete: dict         = st.session_state.athlete
 df:      pd.DataFrame = st.session_state.activities
 
 
+
+
 # ═══════════════════════════════════════════
 #  SIDEBAR
 # ═══════════════════════════════════════════
+# ── Language selector: must be outside sidebar for global scope ──
+if "lang_choice" not in st.session_state:
+    st.session_state.lang_choice = "中文"
+
 with st.sidebar:
-    # Club logo area
-    st.markdown(f"""
-<div style="text-align:center; padding:16px 0 8px;">
-    <div style="font-size:2.4rem;">{CLUB_EMOJI}</div>
-    <div style="font-family:'Bebas Neue'; font-size:1.3rem; color:#FF4D00; letter-spacing:2px;">{CLUB_NAME}</div>
+    st.markdown("---")
+    lang_choice = st.radio("🌐 Language / 语言",
+                           ["中文", "English"],
+                           horizontal=True,
+                           index=0 if st.session_state.lang_choice == "中文" else 1,
+                           label_visibility="collapsed")
+    st.session_state.lang_choice = lang_choice
+    st.markdown("---")
+
+L = LANG["zh"] if st.session_state.lang_choice == "中文" else LANG["en"]
+
+with st.sidebar:
+    # ── Logo ──
+    if LOGO_B64:
+        st.markdown(f"""
+<div style="text-align:center; padding:12px 0 4px;">
+    <img src="data:image/png;base64,{LOGO_B64}" style="width:72px;height:72px;object-fit:contain;border-radius:10px;" />
+    <div style="font-family:'Bebas Neue'; font-size:1.2rem; color:#FF4D00; letter-spacing:2px; margin-top:6px;">{CLUB_NAME}</div>
+</div>
+""", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+<div style="text-align:center; padding:12px 0 4px;">
+    <div style="font-family:'Bebas Neue'; font-size:1.3rem; color:#FF4D00; letter-spacing:2px;">🏃 {CLUB_NAME}</div>
 </div>
 """, unsafe_allow_html=True)
 
-    # Athlete profile
+    # ── Athlete profile ──
     if athlete.get("photo") and athlete["photo"].startswith("http"):
-        st.image(athlete["photo"], width=56)
+        st.image(athlete["photo"], width=52)
+    city_str = f"📍 {athlete['city']}, {athlete['country']}" if athlete.get("city") else ""
     st.markdown(f"""
 <div style="margin-bottom:4px;">
     <span style="font-weight:700; font-size:1rem;">{athlete['name']}</span>
 </div>
-<div style="color:#5A7A5A; font-size:.78rem; letter-spacing:1px;">
-    {'📍 ' + athlete['city'] + ', ' + athlete['country'] if athlete['city'] else ''}
-</div>
-<div style="color:#3A5A3A; font-size:.75rem; margin-top:2px;">
-    👥 {athlete['followers']} followers
-</div>
+<div style="color:#5A7A5A; font-size:.78rem;">{city_str}</div>
+<div style="color:#3A5A3A; font-size:.75rem; margin-top:2px;">👥 {athlete['followers']} followers</div>
 """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     page = st.radio("", [
-        "🏠  动态广场",
-        "📊  我的分析",
-        "🗺️  路线地图",
-        "🏆  排行榜",
-        "👥  跑友对比",
-        "⚙️  设置",
+        L["feed"], L["analysis"], L["map"],
+        L["leaderboard"], L["compare"], L["settings"],
     ], label_visibility="collapsed")
 
     st.markdown("---")
 
-    # Quick stats
+    # ── Quick stats ──
     if df is not None and not df.empty:
         now = datetime.now()
-        this_month = df[df["date"].dt.month == now.month]
-        prev_month = df[df["date"].dt.month == (now.month - 1 or 12)]
-        st.markdown("### 本月概览")
-        st.metric("里程",   f"{this_month['distance_km'].sum():.1f} km",
-                  delta=f"{this_month['distance_km'].sum() - prev_month['distance_km'].sum():.1f} vs 上月")
-        st.metric("跑步",   f"{len(this_month)} 次")
-        st.metric("累计里程", f"{df['distance_km'].sum():.0f} km")
+        this_month = df[(df["date"].dt.month == now.month) & (df["date"].dt.year == now.year)]
+        prev_year  = now.year if now.month > 1 else now.year - 1
+        prev_mon   = now.month - 1 if now.month > 1 else 12
+        prev_month = df[(df["date"].dt.month == prev_mon) & (df["date"].dt.year == prev_year)]
+        st.markdown(f"### {L['this_month']}")
+        vs = "vs last month" if lang_choice == "English" else "vs 上月"
+        st.metric("🏃 " + L["total_runs_s"], f"{len(this_month)} {'runs' if lang_choice=='English' else '次'}")
+        st.metric("📏 " + L["monthly_dist"],  f"{this_month['distance_km'].sum():.1f} km",
+                  delta=f"{this_month['distance_km'].sum() - prev_month['distance_km'].sum():.1f} {vs}")
+        st.metric("🌍 " + L["cum_dist"],      f"{df['distance_km'].sum():.0f} km")
 
     st.markdown("---")
     rcol1, rcol2 = st.columns(2)
     with rcol1:
-        if st.button("🔄 刷新"):
+        if st.button(L["refresh"]):
             fetch_activities.clear()
             fetch_athlete.clear()
             st.session_state.activities = fetch_activities(td["access_token"])
             st.session_state.athlete    = fetch_athlete(td["access_token"])
             st.rerun()
     with rcol2:
-        if st.button("🚪 退出"):
+        if st.button(L["logout"]):
             for k in ["token_data","athlete","activities"]:
                 st.session_state[k] = None
             st.session_state.feed = []
@@ -604,17 +734,17 @@ def no_data():
 # ═══════════════════════════════════════════════════════════
 #  PAGE: 动态广场
 # ═══════════════════════════════════════════════════════════
-if "动态广场" in page:
+if any(k in page for k in ["动态广场","Club Feed"]):
     st.markdown(f"""
 <div class="hero">
-    <div class="hero-title">{CLUB_EMOJI} {CLUB_NAME}</div>
+    <div class="hero-title">{CLUB_NAME}</div>
     <div class="hero-sub">动态广场 — 分享每一次奔跑</div>
 </div>
 """, unsafe_allow_html=True)
 
     if df is not None and not df.empty:
         # Recent runs
-        st.markdown("## 你的最近动态")
+        st.markdown(f"## {L['recent']}")
         recent = df.sort_values("date", ascending=False).head(5)
         for _, row in recent.iterrows():
             pace_str = f"{int(row['pace_min_km'])}'{int((row['pace_min_km']%1)*60)}\""
@@ -683,8 +813,8 @@ if "动态广场" in page:
 # ═══════════════════════════════════════════════════════════
 #  PAGE: 我的分析
 # ═══════════════════════════════════════════════════════════
-elif "我的分析" in page:
-    st.markdown("# 📊 我的跑步分析")
+elif any(k in page for k in ["我的分析","My Analysis"]):
+    st.markdown(f"# {L['analysis']}")
 
     if df is None or df.empty:
         no_data()
@@ -699,17 +829,17 @@ elif "我的分析" in page:
     longest   = df["distance_km"].max()
 
     c1,c2,c3,c4,c5,c6 = st.columns(6)
-    c1.metric("总里程",   f"{total_km:.0f} km")
+    c1.metric(L["total_dist"],   f"{total_km:.0f} km")
     c2.metric("总次数",   f"{total_runs} 次")
-    c3.metric("最长单跑", f"{longest:.1f} km")
-    c4.metric("最快配速", f"{best_pace:.2f} /km")
-    c5.metric("平均心率", f"{avg_hr:.0f} bpm" if avg_hr else "—")
-    c6.metric("累计爬升", f"{total_elev:.0f} m")
+    c3.metric(L["longest"], f"{longest:.1f} km")
+    c4.metric(L["best_pace"], f"{best_pace:.2f} /km")
+    c5.metric(L["avg_hr"], f"{avg_hr:.0f} bpm" if avg_hr else "—")
+    c6.metric(L["total_elev"], f"{total_elev:.0f} m")
 
     st.markdown("---")
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📅 月度趋势", "⚡ 配速分析", "❤️ 心率区间", "🏔 爬升统计", "📋 完整记录"
+        f"📅 {L['monthly']}", f"⚡ {L['pace']}", f"❤️ {L['hr']}", f"🏔 {L['elevation']}", f"📋 {L['log']}"
     ])
 
     # ── Tab 1: Monthly ──
@@ -729,14 +859,12 @@ elif "我的分析" in page:
                         name="累计里程", line_color="#FFD600",
                         line_width=2, yaxis="y2",
                         mode="lines+markers", marker_size=6)
-        fig.update_layout(
-            **dark_layout(title="月度里程统计"),
-            yaxis=dict(title="当月里程 (km)", gridcolor="#1E2A1E"),
-            yaxis2=dict(title="累计里程 (km)", overlaying="y", side="right",
-                        gridcolor="rgba(0,0,0,0)"),
-            legend=dict(bgcolor="#080E08", bordercolor="#2A3D2A"),
-            bargap=0.3,
-        )
+        layout = dark_layout(title="月度里程统计")
+        layout["yaxis"] = dict(title="当月里程 (km)", gridcolor="#1E2A1E")
+        layout["yaxis2"] = dict(title="累计里程 (km)", overlaying="y", side="right",
+                                gridcolor="rgba(0,0,0,0)")
+        layout["bargap"] = 0.3
+        fig.update_layout(**layout)
         st.plotly_chart(fig, use_container_width=True)
 
         # Weekly run heatmap
@@ -784,9 +912,9 @@ elif "我的分析" in page:
         fig2.add_scatter(x=sub["date"], y=sub["pace_roll7"],
                          mode="lines", name="7次滑动均值",
                          line=dict(color="#FF4D00", width=2.5))
-        fig2.update_layout(**dark_layout(title="配速进步趋势"),
-                           yaxis=dict(title="配速 (min/km)", autorange="reversed",
-                                      gridcolor="#1E2A1E"))
+        _l = dark_layout(title="配速进步趋势")
+        _l["yaxis"] = dict(title="配速 (min/km)", autorange="reversed", gridcolor="#1E2A1E")
+        fig2.update_layout(**_l)
         st.plotly_chart(fig2, use_container_width=True)
 
         # Personal bests
@@ -909,8 +1037,8 @@ elif "我的分析" in page:
 # ═══════════════════════════════════════════════════════════
 #  PAGE: 路线地图
 # ═══════════════════════════════════════════════════════════
-elif "路线地图" in page:
-    st.markdown("# 🗺️ 路线地图")
+elif any(k in page for k in ["路线地图","Route Map"]):
+    st.markdown(f"# {L['map']}")
 
     if df is None or df.empty:
         no_data()
@@ -1001,8 +1129,8 @@ elif "路线地图" in page:
 # ═══════════════════════════════════════════════════════════
 #  PAGE: 排行榜
 # ═══════════════════════════════════════════════════════════
-elif "排行榜" in page:
-    st.markdown("# 🏆 俱乐部排行榜")
+elif any(k in page for k in ["排行榜","Leaderboard"]):
+    st.markdown(f"# {L['leaderboard']}")
 
     if df is None or df.empty:
         no_data()
@@ -1010,10 +1138,10 @@ elif "排行榜" in page:
 
     f1, f2 = st.columns(2)
     with f1:
-        period = st.selectbox("时间段", ["本月","本季度","本年","全部"])
+        period = st.selectbox("时间段", [L["this_month_s"],L["quarter"],L["this_year"],L["all"]])
     with f2:
         metric_opt = st.selectbox("排名指标", [
-            "总里程", "跑步次数", "最长单跑", "平均配速（越低越好）",
+            L["total_dist"], "跑步次数", L["longest"], "平均配速（越低越好）",
             "最大爬升", "总消耗卡路里"
         ])
 
@@ -1029,9 +1157,9 @@ elif "排行榜" in page:
         filt = filt[filt["date"].dt.year == now.year]
 
     sort_map = {
-        "总里程":             ("distance_km", "sum",  False, "km"),
+        L["total_dist"]:             ("distance_km", "sum",  False, "km"),
         "跑步次数":           ("distance_km", "count",False, "次"),
-        "最长单跑":           ("distance_km", "max",  False, "km"),
+        L["longest"]:           ("distance_km", "max",  False, "km"),
         "平均配速（越低越好）":("pace_min_km", "mean", True,  "min/km"),
         "最大爬升":           ("elevation_m", "max",  False, "m"),
         "总消耗卡路里":        ("calories",    "sum",  False, "kcal"),
@@ -1087,8 +1215,8 @@ elif "排行榜" in page:
 # ═══════════════════════════════════════════════════════════
 #  PAGE: 跑友对比
 # ═══════════════════════════════════════════════════════════
-elif "跑友对比" in page:
-    st.markdown("# 👥 跑友对比")
+elif any(k in page for k in ["跑友对比","Compare"]):
+    st.markdown(f"# {L['compare']}")
 
     if df is None or df.empty:
         no_data()
@@ -1161,7 +1289,7 @@ elif "跑友对比" in page:
 
             # Comparison table
             comp_df = pd.DataFrame({
-                "指标":     ["跑步次数","平均里程(km)","最快配速","平均心率","总爬升(m)"],
+                "指标":     ["跑步次数","平均里程(km)",L["best_pace"],L["avg_hr"],"总爬升(m)"],
                 "时期 A":   [
                     len(period_a),
                     round(period_a["distance_km"].mean(),2),
@@ -1183,8 +1311,8 @@ elif "跑友对比" in page:
 # ═══════════════════════════════════════════════════════════
 #  PAGE: 设置
 # ═══════════════════════════════════════════════════════════
-elif "设置" in page:
-    st.markdown("# ⚙️ 设置与帮助")
+elif any(k in page for k in ["设置","Settings"]):
+    st.markdown(f"# {L['settings']}")
     st.markdown("---")
 
     tab1, tab2, tab3 = st.tabs(["🚀 部署指南", "👥 邀请队友", "🔒 隐私说明"])
@@ -1273,6 +1401,6 @@ Strava → 设置 → 我的应用 → 找到 MT Santai Running Club → 撤销�
     st.markdown(f"""
 ---
 <div style="text-align:center; color:#3A5A3A; font-size:.8rem; padding:16px;">
-    {CLUB_EMOJI} {CLUB_NAME} &nbsp;·&nbsp; Powered by Strava API + Streamlit
+    {CLUB_NAME} &nbsp;·&nbsp; Powered by Strava API + Streamlit
 </div>
 """, unsafe_allow_html=True)
