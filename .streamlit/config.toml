@@ -4,11 +4,3 @@ backgroundColor = "#0C0C0C"
 secondaryBackgroundColor = "#161616"
 textColor = "#F0EBE1"
 font = "sans serif"
-
-mt-santai-running-club\
-    app.py
-    logo.png
-    requirements.txt
-    .streamlit\
-        config.toml
-        secrets.toml
