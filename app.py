@@ -1150,33 +1150,44 @@ elif any(k in page for k in ["排行榜","Leaderboard"]):
         no_data()
         st.stop()
 
+    # Metric options - bilingual
+    metric_options = {
+        "zh": ["总里程", "跑步次数", "最长单跑", "平均配速（越低越好）", "最大爬升", "总消耗卡路里"],
+        "en": ["Total Distance", "Total Runs", "Longest Run", "Best Pace (lower=better)", "Max Elevation", "Total Calories"],
+    }
+    lang_key = "zh" if lang_choice == "中文" else "en"
+
     f1, f2 = st.columns(2)
     with f1:
-        period = st.selectbox("时间段", [L["this_month_s"],L["quarter"],L["this_year"],L["all"]])
+        period = st.selectbox(L["period"], [L["this_month_s"], L["quarter"], L["this_year"], L["all"]])
     with f2:
-        metric_opt = st.selectbox("排名指标", [
-            L["total_dist"], "跑步次数", L["longest"], "平均配速（越低越好）",
-            "最大爬升", "总消耗卡路里"
-        ])
+        metric_opt = st.selectbox(L["metric"], metric_options[lang_key])
 
     now = datetime.now()
     filt = df.copy()
-    if period == "本月":
-        filt = filt[filt["date"].dt.month == now.month]
-    elif period == "本季度":
+    # Fix: filter by both month AND year
+    if period in ["本月", "This Month"]:
+        filt = filt[(filt["date"].dt.month == now.month) & (filt["date"].dt.year == now.year)]
+    elif period in ["本季度", "This Quarter"]:
         q = (now.month - 1) // 3
         q_start = now.replace(month=q*3+1, day=1)
         filt = filt[filt["date"] >= pd.Timestamp(q_start)]
-    elif period == "本年":
+    elif period in ["本年", "This Year"]:
         filt = filt[filt["date"].dt.year == now.year]
 
     sort_map = {
-        L["total_dist"]:             ("distance_km", "sum",  False, "km"),
-        "跑步次数":           ("distance_km", "count",False, "次"),
-        L["longest"]:           ("distance_km", "max",  False, "km"),
-        "平均配速（越低越好）":("pace_min_km", "mean", True,  "min/km"),
-        "最大爬升":           ("elevation_m", "max",  False, "m"),
-        "总消耗卡路里":        ("calories",    "sum",  False, "kcal"),
+        "总里程":                    ("distance_km", "sum",   False, "km"),
+        "Total Distance":            ("distance_km", "sum",   False, "km"),
+        "跑步次数":                  ("distance_km", "count", False, "次"),
+        "Total Runs":                ("distance_km", "count", False, "runs"),
+        "最长单跑":                  ("distance_km", "max",   False, "km"),
+        "Longest Run":               ("distance_km", "max",   False, "km"),
+        "平均配速（越低越好）":       ("pace_min_km", "mean",  True,  "min/km"),
+        "Best Pace (lower=better)":  ("pace_min_km", "mean",  True,  "min/km"),
+        "最大爬升":                  ("elevation_m", "max",   False, "m"),
+        "Max Elevation":             ("elevation_m", "max",   False, "m"),
+        "总消耗卡路里":              ("calories",    "sum",   False, "kcal"),
+        "Total Calories":            ("calories",    "sum",   False, "kcal"),
     }
     col, agg, asc, unit = sort_map[metric_opt]
 
