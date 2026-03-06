@@ -161,7 +161,7 @@ def get_secret(key, default=""):
 
 CLIENT_ID     = "207566"
 CLIENT_SECRET = "35e71489638f64ec6ccddb02e6532a4fe8eb6187"
-REDIRECT_URI  = "http://localhost:8501"
+REDIRECT_URI  = "https://mt-santai-running-club.onrender.com"
 
 SCOPE = ["read", "activity:read_all", "profile:read_all"]
 
