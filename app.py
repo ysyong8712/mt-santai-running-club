@@ -151,13 +151,16 @@ st.set_page_config(
 import os
 
 def get_secret(key, default=""):
-    # Try st.secrets first, then environment variables
+    # Try environment variables first (Render), then st.secrets (local)
+    val = os.environ.get(key, "")
+    if val:
+        return val.strip()
     try:
         val = st.secrets[key]
         return str(val).strip()
     except Exception:
         pass
-    return os.environ.get(key, default)
+    return default
 
 CLIENT_ID     = get_secret("STRAVA_CLIENT_ID")
 CLIENT_SECRET = get_secret("STRAVA_CLIENT_SECRET")
