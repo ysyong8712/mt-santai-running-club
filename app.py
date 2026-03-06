@@ -159,9 +159,9 @@ def get_secret(key, default=""):
         pass
     return os.environ.get(key, default)
 
-CLIENT_ID     = "207566"
-CLIENT_SECRET = "35e71489638f64ec6ccddb02e6532a4fe8eb6187"
-REDIRECT_URI  = "https://mt-santai-running-club.onrender.com"
+CLIENT_ID     = get_secret("STRAVA_CLIENT_ID")
+CLIENT_SECRET = get_secret("STRAVA_CLIENT_SECRET")
+REDIRECT_URI  = get_secret("REDIRECT_URI", "http://localhost:8501")
 
 SCOPE = ["read", "activity:read_all", "profile:read_all"]
 
@@ -545,16 +545,27 @@ def dark_layout(**extra):
 #  OAUTH CALLBACK HANDLER
 # ═══════════════════════════════════════════
 params = st.query_params
-if "code" in params and st.session_state.token_data is None:
-    try:
-        with st.spinner("正在连接 Strava…"):
-            token = exchange_code(params["code"])
-        st.session_state.token_data = token
+if "code" in params:
+    code = params["code"]
+    # Only exchange if we don't have a token yet
+    # and this code hasn't been used before
+    last_code = st.session_state.get("last_used_code", "")
+    if st.session_state.token_data is None and code != last_code:
+        try:
+            with st.spinner("正在连接 Strava…"):
+                token = exchange_code(code)
+            st.session_state.token_data = token
+            st.session_state.last_used_code = code
+            st.query_params.clear()
+            st.rerun()
+        except Exception as e:
+            # Clear the bad code from URL and show login page
+            st.query_params.clear()
+            st.session_state.last_used_code = code
+            st.rerun()
+    else:
+        # Code already used or already logged in, clear URL
         st.query_params.clear()
-        st.rerun()
-    except Exception as e:
-        st.error(f"授权失败：{e}")
-        st.stop()
 
 
 # ═══════════════════════════════════════════
