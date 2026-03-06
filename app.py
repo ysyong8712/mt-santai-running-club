@@ -1343,57 +1343,46 @@ elif any(k in page for k in ["设置","Settings"]):
     tab1, tab2, tab3 = st.tabs(["🚀 部署指南", "👥 邀请队友", "🔒 隐私说明"])
 
     with tab1:
-        st.markdown("## Streamlit Cloud 免费部署")
+        st.markdown("## 🚀 Render.com 部署指南")
         st.markdown("""
-**第一步：上传代码到 GitHub**
-```bash
-git init
-git add .
-git commit -m "MT Santai Running Club init"
-git remote add origin https://github.com/你的用户名/mt-santai-running-club.git
-git push -u origin main
+**你的 App 已经成功部署在：**
+```
+https://mt-santai-running-club.onrender.com
 ```
 
-**第二步：在 Streamlit Cloud 部署**
-1. 前往 [share.streamlit.io](https://share.streamlit.io)
-2. 连接你的 GitHub
-3. 选择仓库 `mt-santai-running-club`，Main file: `app.py`
-4. 点击 **Deploy**
+**如何更新 App：**
+1. 修改本地的 `app.py`
+2. 打开 GitHub Desktop → Commit → Push
+3. Render 会**自动重新部署**，无需手动操作！
 
-**第三步：配置 Strava Secrets**
+**⚠️ 免费版注意事项：**
+- 15 分钟无人使用后 App 会进入**休眠**
+- 下次打开需要等约 **30-60 秒** 重新启动
+- 每月有 **750 小时**免费运行时间（足够用）
 
-在 Streamlit Cloud 的 App Settings → Secrets 中填入：
-```toml
-STRAVA_CLIENT_ID = "你的Client ID"
-STRAVA_CLIENT_SECRET = "你的Client Secret"
-REDIRECT_URI = "https://你的app名称.streamlit.app"
-```
-
-**第四步：更新 Strava App 回调地址**
-
-回到 [strava.com/settings/api](https://www.strava.com/settings/api)，
-把 **Authorization Callback Domain** 改为 `你的app名称.streamlit.app`
+**如需修改 Strava 密钥：**
+1. 前往 [render.com](https://render.com)
+2. 点击服务 → Environment
+3. 修改环境变量后 Save Changes
 """)
 
     with tab2:
-        st.markdown("## 邀请 MT Santai 队友")
+        st.markdown("## 👥 邀请 MT Santai 队友")
         st.markdown("""
-**分享方式：**
-
-把部署好的 Streamlit Cloud 链接发给队友：
+**把这个链接发给队友：**
 ```
-https://你的app名称.streamlit.app
+https://mt-santai-running-club.onrender.com
 ```
 
 **队友操作：**
-1. 打开链接
+1. 打开链接（第一次可能需要等 30-60 秒启动）
 2. 点击「用 Strava 帐号登录」
-3. 授权后即可查看自己的数据
+3. 授权后即可查看自己的跑步数据
 
 **注意事项：**
 - 每位队友需要有 Strava 帐号
-- 排行榜多人对比需要后端数据库支持
-  （可以升级为 Supabase，完全免费）
+- 手机也可以直接打开使用 📱
+- 可以加到手机主屏幕，像 App 一样使用！
 """)
 
         if athlete:
